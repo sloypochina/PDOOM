@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const exitGameBtn = document.getElementById('exitGameBtn');
     const mobileControls = document.getElementById('mobile-controls');
 
-    // <<< ВОТ ОНА, ПРОПАВШАЯ ФУНКЦИЯ, ТЕПЕРЬ ОНА НА МЕСТЕ! >>>
     function showScreen(screen) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         screen.classList.add('active');
@@ -38,18 +37,37 @@ document.addEventListener('DOMContentLoaded', () => {
         startGameBtn.disabled = true;
         loadingText.style.display = 'block';
 
-        for (const name in assetsToLoad) {
+        const assetKeys = Object.keys(assetsToLoad);
+        const totalAssets = assetKeys.length;
+        console.log("Начинаю загрузку", totalAssets, "ресурсов...");
+
+        if (totalAssets === 0) {
+            startGameBtn.disabled = false;
+            loadingText.style.display = 'none';
+            return;
+        }
+
+        assetKeys.forEach(name => {
             const img = new Image();
             img.src = assetsToLoad[name];
+            console.log("Загружаю:", name, "из пути:", img.src);
+
             img.onload = () => {
                 assetsLoaded++;
                 textures[name] = img;
-                if (assetsLoaded === Object.keys(assetsToLoad).length) {
+                console.log("УСПЕШНО ЗАГРУЖЕН:", name, `(${assetsLoaded}/${totalAssets})`);
+
+                if (assetsLoaded === totalAssets) {
+                    console.log("!!! ВСЕ РЕСУРСЫ УСПЕШНО ЗАГРУЖЕНЫ !!!");
                     startGameBtn.disabled = false;
                     loadingText.style.display = 'none';
                 }
             };
-        }
+
+            img.onerror = () => {
+                console.error("!!! ОШИБКА ЗАГРУЗКИ РЕСУРСА:", name, "из пути:", img.src);
+            };
+        });
     }
 
     const map = [
@@ -234,7 +252,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (obj.type === 'wall') {
                 const texture = textures[obj.textureName];
-                ctx.drawImage(texture, obj.textureX, 0, 1, TILE_SIZE, obj.x, y, 1, projectionHeight);
+                if (texture) { // Проверяем, что текстура загрузилась
+                    ctx.drawImage(texture, obj.textureX, 0, 1, TILE_SIZE, obj.x, y, 1, projectionHeight);
+                }
                 if (obj.isVertical) {
                     ctx.fillStyle = 'rgba(0,0,0,0.4)';
                     ctx.fillRect(obj.x, y, 1, projectionHeight);
@@ -249,7 +269,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (screenX >= 0 && screenX < screenWidth) {
                         if (zBuffer[screenX] > obj.dist) {
                              const texture = textures[obj.textureName];
-                             ctx.drawImage(texture, i / spriteWidth * TILE_SIZE, 0, 1, TILE_SIZE, screenX, y, 1, projectionHeight);
+                             if (texture) { // Проверяем, что текстура загрузилась
+                                 ctx.drawImage(texture, i / spriteWidth * TILE_SIZE, 0, 1, TILE_SIZE, screenX, y, 1, projectionHeight);
+                             }
                              if(obj.spriteRef.health < 100){
                                 ctx.fillStyle = 'rgba(255,0,0,0.3)';
                                 ctx.fillRect(screenX, y, 1, projectionHeight);
@@ -262,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Инициализация ---
     showScreen(mainMenu);
     loadAssets();
     setupControls();

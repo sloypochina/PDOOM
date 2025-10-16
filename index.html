@@ -11,26 +11,35 @@
     <div id="mainMenu" class="screen active">
         <h1>Главное Меню</h1>
         <button id="startGameBtn">Начать игру</button>
-        <button id="settingsBtn">Настройки</button>
+        <p class="loading-text" id="loadingText">Загрузка ресурсов...</p>
     </div>
-    <div id="settingsMenu" class="screen">
-        <h1>Настройки</h1>
-        <div class="setting">
-            <label for="wallTexture">Текстура стен:</label>
-            <select id="wallTexture">
-                <option value="brick">Кирпич</option>
-                <option value="wood">Дерево</option>
-            </select>
-        </div>
-        <button id="backToMenuBtn">Назад</button>
-    </div>
+
     <div id="gameContainer" class="screen">
         <canvas id="gameCanvas"></canvas>
-        <div id="controls">
-            <p>Управление: WASD/Стрелки + Q/E</p>
-            <button id="exitGameBtn">Выйти в меню</button>
+        
+        <div id="game-ui">
+            <img id="weapon" src="assets/weapon_gun.png" alt="weapon">
         </div>
+
+        <div id="mobile-controls">
+            <div class="d-pad">
+                <button id="btn-up">▲</button>
+                <div class="d-pad-center">
+                    <button id="btn-left">◀</button>
+                    <button id="btn-right">▶</button>
+                </div>
+                <button id="btn-down">▼</button>
+            </div>
+            <div class="action-buttons">
+                <button id="btn-strafe-left">↰</button>
+                <button id="btn-shoot">F</button>
+                <button id="btn-strafe-right">↱</button>
+            </div>
+        </div>
+
+        <button id="exitGameBtn">Выйти в меню</button>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>

@@ -181,17 +181,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function render() {
-        ctx.clearRect(0, 0, screenWidth, screenHeight);
         ctx.fillStyle = '#444';
         ctx.fillRect(0, 0, screenWidth, screenHeight / 2);
         ctx.fillStyle = '#888';
         ctx.fillRect(0, screenHeight / 2, screenWidth, screenHeight / 2);
 
-        let objectsToRender = [];
         let zBuffer = new Array(screenWidth).fill(Infinity);
 
         for (let i = 0; i < screenWidth; i++) {
             const rayAngle = (player.angle - player.fov / 2) + (i / screenWidth) * player.fov;
+            
             let distanceToWall = 0;
             let hitWall = false;
             let wallType = 0;
@@ -201,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const eyeY = Math.sin(rayAngle);
 
             while (!hitWall && distanceToWall < 20) {
-                distanceToWall += 0.1;
+                distanceToWall += 0.05;
                 const testX = Math.floor(player.x + eyeX * distanceToWall);
                 const testY = Math.floor(player.y + eyeY * distanceToWall);
 
@@ -210,77 +209,89 @@ document.addEventListener('DOMContentLoaded', () => {
                     wallType = map[testY][testX];
                     zBuffer[i] = distanceToWall;
 
-                    const wallX = player.x + eyeX * distanceToWall;
-                    const wallY = player.y + eyeY * distanceToWall;
-                    let textureX = Math.floor((wallX - Math.floor(wallX)) * TILE_SIZE);
-                    if (Math.abs(eyeY) > Math.abs(eyeX)) {
-                        textureX = Math.floor((wallX - Math.floor(wallX)) * TILE_SIZE);
-                    } else {
-                        textureX = Math.floor((wallY - Math.floor(wallY)) * TILE_SIZE);
+                    const dX = (player.x + eyeX * distanceToWall) - testX;
+                    const dY = (player.y + eyeY * distanceToWall) - testY;
+
+                    const dot = eyeX * 1 + eyeY * 0;
+                    if(dX > 0.99 && dot < 0 || dX < 0.01 && dot > 0){
                         hitVertical = true;
                     }
-
-                    objectsToRender.push({
-                        type: 'wall', x: i, dist: distanceToWall,
-                        textureName: textureMap[wallType],
-                        textureX: textureX,
-                        isVertical: hitVertical
-                    });
                 }
             }
+            
+            if (hitWall) {
+                const correctedDist = distanceToWall * Math.cos(rayAngle - player.angle);
+                const wallHeight = Math.min(screenHeight * 5, screenHeight / correctedDist);
+                const wallTop = (screenHeight / 2) - wallHeight / 2;
+
+                const wallX = hitVertical ? (player.y + eyeY * distanceToWall) : (player.x + eyeX * distanceToWall);
+                let textureX = Math.floor((wallX - Math.floor(wallX)) * TILE_SIZE);
+
+                const textureName = textureMap[wallType];
+                const texture = textures[textureName];
+
+                if (texture) {
+                    ctx.drawImage(texture, textureX, 0, 1, TILE_SIZE, i, wallTop, 1, wallHeight);
+                } else {
+                    ctx.fillStyle = '#FF00FF';
+                    ctx.fillRect(i, wallTop, 1, wallHeight);
+                }
+
+                const shade = 1 - Math.min(correctedDist / 15, 1);
+                ctx.globalAlpha = shade;
+                if(hitVertical) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    ctx.fillRect(i, wallTop, 1, wallHeight);
+                }
+                ctx.globalAlpha = 1.0;
+            }
         }
-        
+
+        sprites.sort((a, b) => {
+            const distA = (player.x - a.x) * (player.x - a.x) + (player.y - a.y) * (player.y - a.y);
+            const distB = (player.x - b.x) * (player.x - b.x) + (player.y - b.y) * (player.y - b.y);
+            return distB - distA;
+        });
+
         sprites.forEach(sprite => {
             const dx = sprite.x - player.x;
             const dy = sprite.y - player.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            const spriteAngle = Math.atan2(dy, dx) - player.angle;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            let spriteAngle = Math.atan2(dy, dx) - player.angle;
+            if (spriteAngle < -Math.PI) spriteAngle += 2 * Math.PI;
+            if (spriteAngle > Math.PI) spriteAngle -= 2 * Math.PI;
 
-            if (Math.abs(spriteAngle) < player.fov / 2 + 0.5) {
-                 objectsToRender.push({ type: 'sprite', dist: dist, textureName: sprite.texture, spriteAngle: spriteAngle, spriteRef: sprite });
-            }
-        });
+            const isVisible = Math.abs(spriteAngle) < player.fov / 2 + 0.3;
 
-        objectsToRender.sort((a, b) => b.dist - a.dist);
+            if (isVisible && dist > 0.5) {
+                const correctedDist = dist * Math.cos(spriteAngle);
+                const spriteHeight = Math.min(screenHeight * 5, screenHeight / correctedDist);
+                const spriteWidth = spriteHeight;
+                const spriteTop = (screenHeight / 2) - spriteHeight / 2;
+                const spriteScreenX = (screenWidth / 2) + Math.tan(spriteAngle) * (screenWidth / 2);
+                const spriteLeft = spriteScreenX - spriteWidth / 2;
 
-        objectsToRender.forEach(obj => {
-            const correctedDist = obj.dist * Math.cos(obj.type === 'wall' ? (player.angle - obj.angle) : obj.spriteAngle);
-            const projectionHeight = Math.min(screenHeight * 2, screenHeight / correctedDist);
-            const y = (screenHeight / 2) - projectionHeight / 2;
+                const texture = textures[sprite.texture];
+                if (texture) {
+                    for (let i = 0; i < spriteWidth; i++) {
+                        const screenX = Math.floor(spriteLeft + i);
+                        if (screenX >= 0 && screenX < screenWidth && zBuffer[screenX] > dist) {
+                            const textureX = Math.floor(i / spriteWidth * TILE_SIZE);
+                            
+                            const shade = 1 - Math.min(dist / 15, 1);
+                            ctx.globalAlpha = shade;
+                            ctx.drawImage(texture, textureX, 0, 1, TILE_SIZE, screenX, spriteTop, 1, spriteHeight);
+                            ctx.globalAlpha = 1.0;
 
-            ctx.globalAlpha = Math.max(0.2, 1 - (obj.dist / 10));
-
-            if (obj.type === 'wall') {
-                const texture = textures[obj.textureName];
-                if (texture) { // Проверяем, что текстура загрузилась
-                    ctx.drawImage(texture, obj.textureX, 0, 1, TILE_SIZE, obj.x, y, 1, projectionHeight);
-                }
-                if (obj.isVertical) {
-                    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                    ctx.fillRect(obj.x, y, 1, projectionHeight);
-                }
-            } else if (obj.type === 'sprite') {
-                const spriteScreenX = (screenWidth / 2) + Math.tan(obj.spriteAngle) * (screenWidth/2);
-                const spriteWidth = projectionHeight;
-                const spriteX = spriteScreenX - spriteWidth / 2;
-
-                for (let i = 0; i < spriteWidth; i++) {
-                    const screenX = Math.floor(spriteX + i);
-                    if (screenX >= 0 && screenX < screenWidth) {
-                        if (zBuffer[screenX] > obj.dist) {
-                             const texture = textures[obj.textureName];
-                             if (texture) { // Проверяем, что текстура загрузилась
-                                 ctx.drawImage(texture, i / spriteWidth * TILE_SIZE, 0, 1, TILE_SIZE, screenX, y, 1, projectionHeight);
-                             }
-                             if(obj.spriteRef.health < 100){
+                            if (sprite.health < 100) {
                                 ctx.fillStyle = 'rgba(255,0,0,0.3)';
-                                ctx.fillRect(screenX, y, 1, projectionHeight);
-                             }
+                                ctx.fillRect(screenX, spriteTop, 1, spriteHeight);
+                            }
                         }
                     }
                 }
             }
-            ctx.globalAlpha = 1.0;
         });
     }
 

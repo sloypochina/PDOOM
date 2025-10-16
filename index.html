@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Моя 2D Игра</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div id="mainMenu" class="screen active">
+        <h1>Главное Меню</h1>
+        <button id="startGameBtn">Начать игру</button>
+        <button id="settingsBtn">Настройки</button>
+    </div>
+    <div id="settingsMenu" class="screen">
+        <h1>Настройки</h1>
+        <div class="setting">
+            <label for="wallTexture">Текстура стен:</label>
+            <select id="wallTexture">
+                <option value="brick">Кирпич</option>
+                <option value="wood">Дерево</option>
+            </select>
+        </div>
+        <button id="backToMenuBtn">Назад</button>
+    </div>
+    <div id="gameContainer" class="screen">
+        <canvas id="gameCanvas"></canvas>
+        <div id="controls">
+            <p>Управление: WASD/Стрелки + Q/E</p>
+            <button id="exitGameBtn">Выйти в меню</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
